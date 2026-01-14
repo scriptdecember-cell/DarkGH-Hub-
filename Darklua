@@ -1,0 +1,598 @@
+wait(1)
+
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Player = Players.LocalPlayer
+repeat wait() until Player.Character
+local Character = Player.Character
+local Humanoid = Character:WaitForChild("Humanoid")
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+
+local Settings = {
+    AutoBreakBlock = false,
+    AutoCollectBrainrots = false,
+    FilterGod = false,
+    FilterSecret = false,
+    FilterMythic = false,
+    AutoRebirth = false,
+    AutoBuyPickaxe = false,
+    SelectedPickaxe = "Rainbow",
+    AutoBuyGear = false,
+    SelectedGear = "Speed Coil",
+    AutoPlaceBrainrot = false,
+    BrainrotSlot = "1",
+    BrainrotType = "Pipi_Potato",
+    FreezeSammy = false,
+    Speed = false,
+    SpeedAmount = 100,
+    InfiniteJump = false,
+    NoClip = false,
+    SavedPosition = nil
+}
+
+local Connections = {}
+local C1, C2, C3, C4, C5, C6, C7, C8, C9
+
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+
+local Window = Rayfield:CreateWindow({
+    Name = "Break a Lucky Block",
+    LoadingTitle = "Loading Script...",
+    LoadingSubtitle = "by DarkGH",
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = nil,
+        FileName = "BreakLuckyBlock"
+    },
+    Discord = {
+        Enabled = false,
+        Invite = "noinvitelink",
+        RememberJoins = true
+    },
+    KeySystem = false,
+    KeySettings = {
+        Title = "Break a Lucky Block",
+        Subtitle = "Key System",
+        Note = "No key needed",
+        FileName = "Key",
+        SaveKey = false,
+        GrabKeyFromSite = false,
+        Key = {""}
+    }
+})
+
+local function FindNearestBlock()
+    local nearestBlock = nil
+    local shortestDistance = math.huge
+    
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") or obj:IsA("Part") then
+            local name = string.lower(obj.Name)
+            if string.find(name, "block") or string.find(name, "lucky") then
+                local distance = 0
+                if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
+                    distance = (HumanoidRootPart.Position - obj.HumanoidRootPart.Position).Magnitude
+                elseif obj:IsA("Part") then
+                    distance = (HumanoidRootPart.Position - obj.Position).Magnitude
+                end
+                
+                if distance < shortestDistance and distance < 50 then
+                    shortestDistance = distance
+                    nearestBlock = obj
+                end
+            end
+        end
+    end
+    
+    return nearestBlock
+end
+
+local function BreakBlock()
+    spawn(function()
+        pcall(function()
+            local block = FindNearestBlock()
+            if block then
+                if block:IsA("Model") then
+                    local clickDetector = block:FindFirstChildOfClass("ClickDetector", true)
+                    if clickDetector then
+                        fireclickdetector(clickDetector)
+                    end
+                elseif block:IsA("Part") then
+                    local clickDetector = block:FindFirstChildOfClass("ClickDetector")
+                    if clickDetector then
+                        fireclickdetector(clickDetector)
+                    end
+                end
+            end
+        end)
+    end)
+end
+
+local function StartAutoBreak()
+    if C1 then return end
+    C1 = RunService.Heartbeat:Connect(function()
+        if Settings.AutoBreakBlock then
+            BreakBlock()
+            wait(0.1)
+        end
+    end)
+end
+
+local function StopAutoBreak()
+    if C1 then C1:Disconnect() C1 = nil end
+end
+
+local function FindBrainrots()
+    local brainrots = {}
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") or obj:IsA("Part") then
+            local name = string.lower(obj.Name)
+            if string.find(name, "brain") or string.find(name, "drop") then
+                local rarity = string.lower(tostring(obj:GetAttribute("Rarity") or ""))
+                local shouldCollect = true
+                
+                if Settings.FilterGod and not string.find(rarity, "god") then
+                    shouldCollect = false
+                elseif Settings.FilterSecret and not string.find(rarity, "secret") then
+                    shouldCollect = false
+                elseif Settings.FilterMythic and not string.find(rarity, "mythic") then
+                    shouldCollect = false
+                end
+                
+                if shouldCollect then
+                    table.insert(brainrots, obj)
+                end
+            end
+        end
+    end
+    return brainrots
+end
+
+local function CollectBrainrot(brainrot)
+    spawn(function()
+        pcall(function()
+            if brainrot:IsA("Model") and brainrot:FindFirstChild("HumanoidRootPart") then
+                local oldPos = HumanoidRootPart.CFrame
+                HumanoidRootPart.CFrame = brainrot.HumanoidRootPart.CFrame
+                wait(0.2)
+                HumanoidRootPart.CFrame = oldPos
+            elseif brainrot:IsA("Part") then
+                local oldPos = HumanoidRootPart.CFrame
+                HumanoidRootPart.CFrame = brainrot.CFrame
+                wait(0.2)
+                HumanoidRootPart.CFrame = oldPos
+            end
+        end)
+    end)
+end
+
+local function StartAutoCollect()
+    if C2 then return end
+    C2 = RunService.Heartbeat:Connect(function()
+        if Settings.AutoCollectBrainrots then
+            local brainrots = FindBrainrots()
+            for _, brainrot in pairs(brainrots) do
+                CollectBrainrot(brainrot)
+                wait(0.3)
+            end
+            wait(0.5)
+        end
+    end)
+end
+
+local function StopAutoCollect()
+    if C2 then C2:Disconnect() C2 = nil end
+end
+
+local function BuyPickaxe(pickaxeName)
+    spawn(function()
+        pcall(function()
+            Remotes.BuyPickaxeEvent:FireServer(pickaxeName)
+        end)
+    end)
+end
+
+local function StartAutoBuyPickaxe()
+    if C3 then return end
+    C3 = RunService.Heartbeat:Connect(function()
+        if Settings.AutoBuyPickaxe then
+            BuyPickaxe(Settings.SelectedPickaxe)
+            wait(2)
+        end
+    end)
+end
+
+local function StopAutoBuyPickaxe()
+    if C3 then C3:Disconnect() C3 = nil end
+end
+
+local function BuyGear(gearName)
+    spawn(function()
+        pcall(function()
+            Remotes.BuyGearEvent:FireServer(gearName)
+        end)
+    end)
+end
+
+local function StartAutoBuyGear()
+    if C4 then return end
+    C4 = RunService.Heartbeat:Connect(function()
+        if Settings.AutoBuyGear then
+            BuyGear(Settings.SelectedGear)
+            wait(2)
+        end
+    end)
+end
+
+local function StopAutoBuyGear()
+    if C4 then C4:Disconnect() C4 = nil end
+end
+
+local function PlaceBrainrot()
+    spawn(function()
+        pcall(function()
+            Remotes.PlaceBrainrotEvent:FireServer(Settings.BrainrotSlot, Settings.BrainrotType)
+        end)
+    end)
+end
+
+local function StartAutoPlaceBrainrot()
+    if C5 then return end
+    C5 = RunService.Heartbeat:Connect(function()
+        if Settings.AutoPlaceBrainrot then
+            PlaceBrainrot()
+            wait(0.5)
+        end
+    end)
+end
+
+local function StopAutoPlaceBrainrot()
+    if C5 then C5:Disconnect() C5 = nil end
+end
+
+local function DoRebirth()
+    spawn(function()
+        pcall(function()
+            Remotes.RebirthEvent:FireServer()
+        end)
+    end)
+end
+
+local function StartAutoRebirth()
+    if C6 then return end
+    C6 = RunService.Heartbeat:Connect(function()
+        if Settings.AutoRebirth then
+            DoRebirth()
+            wait(3)
+        end
+    end)
+end
+
+local function StopAutoRebirth()
+    if C6 then C6:Disconnect() C6 = nil end
+end
+
+local function FreezeSammyToggle()
+    spawn(function()
+        pcall(function()
+            for _, npc in pairs(Workspace:GetDescendants()) do
+                if npc.Name == "Sammy" or string.find(string.lower(npc.Name), "sammy") then
+                    if npc:IsA("Model") and npc:FindFirstChild("HumanoidRootPart") then
+                        npc.HumanoidRootPart.Anchored = Settings.FreezeSammy
+                    end
+                end
+            end
+        end)
+    end)
+end
+
+local MainTab = Window:CreateTab("⛏️ Auto Farm", nil)
+
+local AutoBreakToggle = MainTab:CreateToggle({
+    Name = "Auto Break Blocks",
+    CurrentValue = false,
+    Flag = "AutoBreak",
+    Callback = function(Value)
+        Settings.AutoBreakBlock = Value
+        if Value then
+            StartAutoBreak()
+            Rayfield:Notify({
+                Title = "Auto Break",
+                Content = "Started breaking blocks!",
+                Duration = 2,
+                Image = 4483362458,
+            })
+        else
+            StopAutoBreak()
+        end
+    end,
+})
+
+local AutoCollectToggle = MainTab:CreateToggle({
+    Name = "Auto Collect Brainrots",
+    CurrentValue = false,
+    Flag = "AutoCollect",
+    Callback = function(Value)
+        Settings.AutoCollectBrainrots = Value
+        if Value then
+            StartAutoCollect()
+            Rayfield:Notify({
+                Title = "Auto Collect",
+                Content = "Collecting brainrots!",
+                Duration = 2,
+                Image = 4483362458,
+            })
+        else
+            StopAutoCollect()
+        end
+    end,
+})
+
+local FilterGodToggle = MainTab:CreateToggle({
+    Name = "Filter: God Only",
+    CurrentValue = false,
+    Flag = "FilterGod",
+    Callback = function(Value)
+        Settings.FilterGod = Value
+    end,
+})
+
+local FilterSecretToggle = MainTab:CreateToggle({
+    Name = "Filter: Secret Only",
+    CurrentValue = false,
+    Flag = "FilterSecret",
+    Callback = function(Value)
+        Settings.FilterSecret = Value
+    end,
+})
+
+local FilterMythicToggle = MainTab:CreateToggle({
+    Name = "Filter: Mythic Only",
+    CurrentValue = false,
+    Flag = "FilterMythic",
+    Callback = function(Value)
+        Settings.FilterMythic = Value
+    end,
+})
+
+local AutoRebirthToggle = MainTab:CreateToggle({
+    Name = "Auto Rebirth",
+    CurrentValue = false,
+    Flag = "AutoRebirth",
+    Callback = function(Value)
+        Settings.AutoRebirth = Value
+        if Value then
+            StartAutoRebirth()
+        else
+            StopAutoRebirth()
+        end
+    end,
+})
+
+local RebirthButton = MainTab:CreateButton({
+    Name = "Rebirth Once",
+    Callback = function()
+        DoRebirth()
+        Rayfield:Notify({
+            Title = "Rebirth",
+            Content = "Rebirth triggered!",
+            Duration = 2,
+            Image = 4483362458,
+        })
+    end,
+})
+
+local FreezeSammyToggle = MainTab:CreateToggle({
+    Name = "Freeze Sammy",
+    CurrentValue = false,
+    Flag = "FreezeSammy",
+    Callback = function(Value)
+        Settings.FreezeSammy = Value
+        FreezeSammyToggle()
+        Rayfield:Notify({
+            Title = "Sammy",
+            Content = Value and "Sammy frozen!" or "Sammy unfrozen",
+            Duration = 2,
+            Image = 4483362458,
+        })
+    end,
+})
+
+local ShopTab = Window:CreateTab("🛒 Shop", nil)
+
+local Section1 = ShopTab:CreateSection("⛏️ Pickaxes")
+
+local AutoBuyPickaxeToggle = ShopTab:CreateToggle({
+    Name = "Auto Buy Pickaxe",
+    CurrentValue = false,
+    Flag = "AutoBuyPickaxe",
+    Callback = function(Value)
+        Settings.AutoBuyPickaxe = Value
+        if Value then StartAutoBuyPickaxe() else StopAutoBuyPickaxe() end
+    end,
+})
+
+local PickaxeDropdown = ShopTab:CreateDropdown({
+    Name = "Select Pickaxe",
+    Options = {"Wood", "Stone", "Iron", "Gold", "Diamond", "Emerald", "Sapphire", "Ruby", "Amethyst", "Obsidian", "Galaxy", "Nebula", "Celestial", "Divine", "Disco", "Rainbow"},
+    CurrentOption = {"Rainbow"},
+    MultipleOptions = false,
+    Flag = "PickaxeDropdown",
+    Callback = function(Option)
+        Settings.SelectedPickaxe = Option[1]
+    end,
+})
+
+local BuyPickaxeButton = ShopTab:CreateButton({
+    Name = "Buy Pickaxe Once",
+    Callback = function()
+        BuyPickaxe(Settings.SelectedPickaxe)
+        Rayfield:Notify({
+            Title = "Pickaxe",
+            Content = "Bought: " .. Settings.SelectedPickaxe,
+            Duration = 2,
+            Image = 4483362458,
+        })
+    end,
+})
+
+local Section2 = ShopTab:CreateSection("🎒 Gear")
+
+local AutoBuyGearToggle = ShopTab:CreateToggle({
+    Name = "Auto Buy Gear",
+    CurrentValue = false,
+    Flag = "AutoBuyGear",
+    Callback = function(Value)
+        Settings.AutoBuyGear = Value
+        if Value then StartAutoBuyGear() else StopAutoBuyGear() end
+    end,
+})
+
+local GearDropdown = ShopTab:CreateDropdown({
+    Name = "Select Gear",
+    Options = {"Speed Coil", "Jump Coil", "Double Jump", "Glider", "Jetpack", "Teleporter", "Magnet", "Auto Collector"},
+    CurrentOption = {"Speed Coil"},
+    MultipleOptions = false,
+    Flag = "GearDropdown",
+    Callback = function(Option)
+        Settings.SelectedGear = Option[1]
+    end,
+})
+
+local BuyGearButton = ShopTab:CreateButton({
+    Name = "Buy Gear Once",
+    Callback = function()
+        BuyGear(Settings.SelectedGear)
+        Rayfield:Notify({
+            Title = "Gear",
+            Content = "Bought: " .. Settings.SelectedGear,
+            Duration = 2,
+            Image = 4483362458,
+        })
+    end,
+})
+
+local BrainrotTab = Window:CreateTab("🧠 Brainrot", nil)
+
+local AutoPlaceBrainrotToggle = BrainrotTab:CreateToggle({
+    Name = "Auto Place Brainrot",
+    CurrentValue = false,
+    Flag = "AutoPlaceBrainrot",
+    Callback = function(Value)
+        Settings.AutoPlaceBrainrot = Value
+        if Value then StartAutoPlaceBrainrot() else StopAutoPlaceBrainrot() end
+    end,
+})
+
+local BrainrotSlotInput = BrainrotTab:CreateInput({
+    Name = "Brainrot Slot (1-30)",
+    PlaceholderText = "1",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(Text)
+        if Text ~= "" then
+            Settings.BrainrotSlot = Text
+        end
+    end,
+})
+
+local BrainrotTypeInput = BrainrotTab:CreateInput({
+    Name = "Brainrot Type",
+    PlaceholderText = "Pipi_Potato",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(Text)
+        if Text ~= "" then
+            Settings.BrainrotType = Text
+        end
+    end,
+})
+
+local PlaceBrainrotButton = BrainrotTab:CreateButton({
+    Name = "Place Brainrot Once",
+    Callback = function()
+        PlaceBrainrot()
+        Rayfield:Notify({
+            Title = "Brainrot",
+            Content = "Placed brainrot!",
+            Duration = 2,
+            Image = 4483362458,
+        })
+    end,
+})
+
+local MovementTab = Window:CreateTab("🏃 Movement", nil)
+
+local SpeedToggle = MovementTab:CreateToggle({
+    Name = "Speed Boost",
+    CurrentValue = false,
+    Flag = "Speed",
+    Callback = function(Value)
+        Settings.Speed = Value
+        Humanoid.WalkSpeed = Value and Settings.SpeedAmount or 16
+    end,
+})
+
+local SpeedSlider = MovementTab:CreateSlider({
+    Name = "Speed Amount",
+    Range = {16, 500},
+    Increment = 10,
+    CurrentValue = 100,
+    Flag = "SpeedSlider",
+    Callback = function(Value)
+        Settings.SpeedAmount = Value
+        if Settings.Speed then
+            Humanoid.WalkSpeed = Value
+        end
+    end,
+})
+
+local InfiniteJumpToggle = MovementTab:CreateToggle({
+    Name = "Infinite Jump",
+    CurrentValue = false,
+    Flag = "InfiniteJump",
+    Callback = function(Value)
+        Settings.InfiniteJump = Value
+        if Value then
+            table.insert(Connections, UserInputService.JumpRequest:Connect(function()
+                if Humanoid then
+                    Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                end
+            end))
+        end
+    end,
+})
+
+local NoClipToggle = MovementTab:CreateToggle({
+    Name = "No Clip",
+    CurrentValue = false,
+    Flag = "NoClip",
+    Callback = function(Value)
+        Settings.NoClip = Value
+        if Value then
+            table.insert(Connections, RunService.Stepped:Connect(function()
+                if Character and Settings.NoClip then
+                    for _, part in pairs(Character:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.CanCollide = false
+                        end
+                    end
+                end
+            end))
+        end
+    end,
+})
+
+Rayfield:LoadConfiguration()
+
+Player.CharacterAdded:Connect(function(char)
+    wait(0.5)
+    Character = char
+    Humanoid = char:WaitForChild("Humanoid")
+    HumanoidRootPart = char:WaitForChild("HumanoidRootPart")
+    if Settings.Speed then Humanoid.WalkSpeed = Settings.SpeedAmount end
+end)
